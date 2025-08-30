@@ -11,33 +11,50 @@ const clients = new Map();
 
 // --- Signaling logic ---
 wss.on("connection", ws => {
-	const pc = new RTCPeerConnection();
-	let dc;
 
-  // Create a data channel for the client
-  dc = pc.createDataChannel("game");
-  dc.onmessage = (msg) => {
-    // Broadcast received data to all other clients
-    for (const [otherWs, other] of clients.entries()) {
-      if (otherWs !== ws && other.dataChannel?.readyState === "open") {
-        other.dataChannel.send(msg.data);
-      }
-    }
-  };
+	ws.on("message", (message, isBinary) => {
 
-  clients.set(ws, { pc, dataChannel: dc });
+		if (isBinary) {
+			const firstByte = message.readUInt8(0);
 
-  ws.on("message", message => {
-    // Relay all messages to other clients
-    wss.clients.forEach(client => {
-      if (client !== ws && client.readyState === WebSocket.OPEN) {
-        client.send(message);
+			if (firstByte == 200) {
+				const sdpBuffer = message.subarray(1);
+            	const sdpOffer = sdpBuffer.toString("utf8");
+				console.log("Received SDP offer:", sdpOffer);
 
-		const msgStr = message.toString();
-		console.log(msgStr);
-      }
-    });
-  });
+				const pc = new RTCPeerConnection();
+            	pc.setRemoteDescription({ type: "offer", sdp: sdpOffer })
+				.then(() => {
+					console.log("Remote SDP applied!");
+					return pc.createAnswer();
+				})
+				.then(answer => {
+					return pc.setLocalDescription(answer).then(() => answer);
+				})
+				.then(answer => {
+					const answerBuffer = Buffer.from(answer.sdp, "utf8");
+					const response = Buffer.concat([
+						Buffer.from([201]), // e.g. 201 = answer type
+						answerBuffer
+					]);
+					ws.send(response);
+				})
+				.catch(err => {
+					console.error("Failed to set remote SDP:", err);
+				});
+			}
+		}
+
+		// Relay all messages to other clients
+		// wss.clients.forEach(client => {
+		// 	if (client !== ws && client.readyState === WebSocket.OPEN) {
+		// 		client.send(message);
+
+		// 		const msgStr = message.toString();
+		// 		console.log(msgStr);
+		// 	}
+		// });
+	});
 });
 
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
