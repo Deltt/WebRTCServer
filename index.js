@@ -27,6 +27,8 @@ wss.on("connection", ws => {
 				console.log("Received SDP offer:", sdpOffer);
 
 				const pc = new RTCPeerConnection();
+				clients.set(ws, { pc });
+
             	pc.setRemoteDescription({ type: "offer", sdp: sdpOffer })
 				.then(() => {
 					console.log("Remote SDP applied!");
@@ -50,7 +52,11 @@ wss.on("connection", ws => {
 			else if (firstByte == 202) {
 				const iceBuffer = message.subarray(1);
 				const ice = iceBuffer.toString("utf8");
-				pc.addIceCandidate(ice)
+
+				const pcData = clients.get(ws);
+				if (!pcData) return;
+
+				pcData.pc.addIceCandidate(ice)
   					.catch(err => console.error("Failed to add ICE candidate:", err));
 			}
 		}
