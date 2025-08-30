@@ -47,6 +47,12 @@ wss.on("connection", ws => {
 					console.error("Failed to set remote SDP:", err);
 				});
 			}
+			else if (firstByte == 202) {
+				const iceBuffer = message.subarray(1);
+				const ice = iceBuffer.toString("utf8");
+				pc.addIceCandidate(ice)
+  					.catch(err => console.error("Failed to add ICE candidate:", err));
+			}
 		}
 		else {
 			wss.clients.forEach(client => {
