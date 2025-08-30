@@ -4,8 +4,12 @@ const { RTCPeerConnection } = require("wrtc");
 
 const PORT = process.env.PORT || 3000;
 
-const server = http.createServer();
-const wss = new WebSocket.Server({ server });
+const server = http.createServer((req, res) => {  // CHANGED
+    res.writeHead(200);                           // CHANGED
+    res.end("OK");                                // CHANGED
+});
+
+const wss = new WebSocket.Server({ server });    // CHANGED
 
 const clients = new Map();
 
@@ -43,6 +47,15 @@ wss.on("connection", ws => {
 					console.error("Failed to set remote SDP:", err);
 				});
 			}
+		}
+		else {
+			wss.clients.forEach(client => {
+			if (client !== ws && client.readyState === WebSocket.OPEN) {
+				client.send(message);
+				const msgStr = message.toString();
+				console.log(msgStr);
+			}
+		});
 		}
 
 		// Relay all messages to other clients
