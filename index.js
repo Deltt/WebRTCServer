@@ -56,8 +56,12 @@ wss.on("connection", ws => {
 				const pcData = clients.get(ws);
 				if (!pcData) return;
 
-				pcData.pc.addIceCandidate(ice)
-  					.catch(err => console.error("Failed to add ICE candidate:", err));
+				pcData.pc.addIceCandidate({
+					candidate: ice,
+					sdpMid: "0",
+					sdpMLineIndex: 0
+				})
+				.catch(err => console.error("Failed to add ICE candidate:", err));
 			}
 		}
 		else {
